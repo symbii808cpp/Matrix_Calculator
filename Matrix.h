@@ -8,6 +8,7 @@
 #include <string>
 #include <cstdlib>
 #include <variant>
+#include <vector>
 #include "Utility.h"
 using namespace std;
 
@@ -16,21 +17,31 @@ class Matrix {
     friend Matrix operator*(float&& rhs_const_number, const Matrix& rhs_matrix); //TEST PASSED!!!
 
 private:
-    bool isSquareMatrix() const;
-
-    //Gaussian Elimination Utility Functions
-    void swapRows(const int& firstRow, const int& secondRow);
-    bool isZeroRow(const int& rowIndex);
-    bool isCanMatrixProgress(const Matrix& reduced, const int& columnTracker);
-
-protected:
     int rows, cols;
     string matrix_name;
     float **matrix = nullptr;
+    vector<bool> zeroRow_recordLog;
+
+    bool isSquareMatrix() const;
+
+    //==============Gaussian Elimination Utility Functions===================
+    void sub_from_and_multiplyRow(Matrix& reduced, const int& targetRow, const int& constRow);
+    void multiplyRow(Matrix& reduced, const int& targetRow, const int& start_targetCol);
+    void swapRows(Matrix& reduced, const int& firstRow, const int& secondRow);
+    bool isZeroRow(const Matrix& reduced, const int& rowIndex) const;
+    bool isCanMatrixProgress(const Matrix& reduced, const int& row_absoluteTracker) const;
+    //Above functions to be used within a for-loop
+    void move_zeroRows(Matrix& reduced);
+    void make_leadingVariablesPositive(Matrix& reduced);
+    void InfinitlyManySolutions_Message(const Matrix& objMatrix) const;
+    void NoSolutionSet_Message(const Matrix& objMatrix) const;
+    bool isInfinitlyManySolutions(const Matrix& reduced) const;
+    bool isNoSolutionSet(const Matrix& reduced) const;
+
+protected:
 
     //Class utility functions
     int random_entryGenerator(int upper, int lower);    //TEST PASSED!!!
-
     void data_entryProcedure(const int& rows, const int& cols); //TEST PASSED!!!
     void dimensionSize_ErrorMessage(const Matrix& lhs_matrix, const Matrix& rhs_matrix) const;  //TEST PASSED!!!
     void multiplication_ErrorMessage(const Matrix& lhs_matrix, const Matrix& rhs_matrix) const; //TEST PASSED!!!
@@ -49,6 +60,7 @@ public:
     //TESTS PASSED!!! for the above Constructors and Destructor
 
     void display_matrix() const;  //TEST PASSED!!!
+    static void pauseProgram();
 
     float Trace() const;
     Matrix Transpose() const;
@@ -57,7 +69,6 @@ public:
 
     void getDimensionSize_ErrorMessage(const Matrix& lhs_matrix, const Matrix& rhs_matrix) const;
     void getMultiplication_ErrorMessage(const Matrix& lhs_matrix, const Matrix& rhs_matrix) const;
-
     int getMatrix_Rows() const;
     int getMatrix_Cols() const;
     string getMatrix_Name() const;

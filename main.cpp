@@ -1,6 +1,6 @@
 /*
 Author: Mpilo Ntaka
-Date Code Last Updated: 04 May 2025
+Date Code Last Updated: 07 June 2025
 Programming Language: C++
 Application Program Name: Matrix Calculator
 Application Purpose: To model matrices and perform various operations and transformations on them
@@ -16,39 +16,27 @@ The above example objects are Matrix objects
 */
 
 #include "Matrix.h"
-#include "State_Vector.h"
-
-void Pause() {
-    cin.ignore(100, '\n');
-    cout << "Press the Enter Key to continue" << endl;
-    cin.get();
-}
+#include "State_Vector.h"    
 
 int main() {
     srand(time(nullptr));   //Generates different random values on each program execute
-    State_Vector vector1("Random (3 x 1)");
-    State_Vector vector2(6, "Random (6 x 1)");
-    State_Vector vector3(3, "User-Defined", Matrix::DETERMINED_ENTRIES);
 
-    cout << vector1 << endl;
-    cout << vector2 << endl;
-    cout << vector3 << endl;
+    int noRows, noCols;
+    cout << "Enter the number of rows: ";
+    cin >> noRows;
+    cout << "Enter the number of columns: ";
+    cin >> noCols;
 
-    cout << "===========ADDITION AND SUBTRACTION===================" << endl;
-    State_Vector vector4("Random Vector 4");
-    vector4 = vector1 + vector3;
-    cout << vector4 << endl;
-    vector4 = vector1 - vector3;
-    cout << vector4 << endl;
+    Matrix augMatrix(noRows, noCols, "Augmented", Matrix::DETERMINED_ENTRIES);
+    cout << "=========== GIVEN AUGMENTED MATRIX ===============" << endl;
+    cout << augMatrix << endl;
 
-    cout << "===========ASSIGNMENT START=================" << endl;
-    vector1 = vector3;
-    cout << "===========ASSIGNMENT FINISH=================" << endl;
-
-    cout << vector1 << endl;
-    cout << vector2 << endl;
-    cout << vector3 << endl;
+    Matrix reducedAugMatrix(augMatrix.getMatrix_Rows(), augMatrix.getMatrix_Cols(), "Reduced");
+    reducedAugMatrix = augMatrix.Gaussian_Elimination();
+    cout << "=========== REDUCED AUGMENTED MATRIX =============" << endl;
+    cout << reducedAugMatrix << endl;
     
-    Pause();
+    cout << "Program ended successfully!!!" << endl;
+    Matrix::pauseProgram();
     return 0;
 }

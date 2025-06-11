@@ -61,6 +61,7 @@ Matrix::~Matrix() {
 //Function is COMPLETE
 //Function to display matrix
 void Matrix::display_matrix() const {
+    cout << setprecision(3);
     cout << "======= " << this->matrix_name << " Matrix =======" << endl << endl;
     for (int i = 0; i < this->rows; i++) {
         cout << setw(6) << "[ ";
@@ -70,11 +71,17 @@ void Matrix::display_matrix() const {
                 cout << this->matrix[i][j];
                 break;
             }
-            cout << this->matrix[i][j] << setw(4);
+            cout << this->matrix[i][j] << setw(7);
         }
         cout << " ]" << endl;
     }
     cout << endl << endl;
+}
+
+void Matrix::pauseProgram() {
+    cin.ignore(100, '\n');
+    cout << "Press the Enter Key to continue: " << endl;
+    cin.get();
 }
 
 //Getter-Functions are COMPLETE
@@ -178,37 +185,150 @@ Matrix Matrix::Transpose() const {
     return transpose;
 }
 
+//Function is COMPLETE
+//Function to perform Matrix Row Operations to ...
+//... Row-Reduce a matrix via Gaussian Elimination
 Matrix Matrix::Gaussian_Elimination() {
     //1. Create a new Matrix Object to return and equate it to ' *this '
-    Matrix reduced(this->rows, this->cols, "Reduced");
+    Matrix reduced(this->getMatrix_Rows(), this->getMatrix_Cols(), "Reduced " + this->getMatrix_Name());
     reduced = *this;
-    
+
+    bool isReduced = false;
+    bool isAugmented = false;
+    char coe_augInput = '\0';
+    int ROW_ABSOLUTE_TRACKER = 0;
+    int COL_ABSOLUTE_TRACKER = 0;
+    make_leadingVariablesPositive(reduced);
+    move_zeroRows(reduced);
+
+    do {
+        cout << "Is the " + this->getMatrix_Name() + " Matrix a Coefficient[c] or Augmented Matrix[a]: ";
+        cin >> coe_augInput;
+        if (tolower(coe_augInput) != 'a' || tolower(coe_augInput) != 'c') {
+            cout << "Incorrect input!!! Enter either of the letters above"
+                << " indicated within the square brackets []" << endl;
+            continue;
+        
+        } else if (tolower(coe_augInput) == 'a') { 
+            isAugmented == true;
+            break;
+
+        } else if (tolower(coe_augInput) == 'c') { 
+            isAugmented == false;
+            break;
+        }
+    } while (true);
+
     //2. Use a outer/big for-loop to track each column of the matrix
-    //   The for-loop will progress when there is a leading 1 in that column,
-    //   and the rest of the entries below it are zero
-    //...   Create a function that checks this (^)
+    //   The for-loop will progress to a smaller sub-section of the matrix,
+    //   when there is a leading 1 in that column and the rest of the entries below it are zero!!!
     //   *****All the code below will be contained in this outer/big for-loop*****
-    for (int COLUMN_ROW_TRACKER = 0; COLUMN_ROW_TRACKER < reduced.cols; COLUMN_ROW_TRACKER++) {
+    for (int j = COL_ABSOLUTE_TRACKER; j < reduced.getMatrix_Cols(); j++) {
+        if (isReduced) { break; }
 
-        //#. Look for rows that are wholely divisible by their leading variable
-        //...   Make a function to find and return the row number in this matrix (^)
-        //...   Store these row numbers in a vector-list (for more such rows)
+        //3. Look for rows that are divisible by their leading variable
+        //   We should have leading 1's or 0's in column number COL_ABSOLUTE_TRACKER
+        for (int i = ROW_ABSOLUTE_TRACKER; i < reduced.getMatrix_Rows(); i++) {
+            if (reduced.getMatrix_ptrMatrix()[i][j] != 0) {
+                multiplyRow(reduced, i, j);
+            }
+        }
+        make_leadingVariablesPositive(reduced);
 
-        //#. Using the row number data in the vector-list, i.e, rows that are
-        //   wholely divisible by its leading variable, 
-        //...   individually divide those entire rows by their leading variable (^)
+        //4. In the column number COL_ABSOLUTE_TRACKER, if the element is equal to 0,
+        //   sort those rows to the bottom of the matrix using the swapRows() function
+        //   Use a vector record log to assist with keeping track of which rows to swap
+        vector<bool> zero_leadingElement;
+        for (int i = 0; i < reduced.getMatrix_Rows(); i++) {
+            if (reduced.getMatrix_ptrMatrix()[i][j] == 0)
+                zero_leadingElement.push_back(true);
+            else zero_leadingElement.push_back(false);
+        }
 
-        //#. Swap and move those rows entirely to the top of the matrix
-        //...   Loop through the above vector-list to swap the necessary rows
-        //...   Create a function that finds and returns the row number of the
-        //...       rows that dont have leading 1s
-        //...   Store this row number into a variable
-        //...   Create a function that uses/takes in the above variable and uses
-        //...       the swaping-sorting algorithm
+        //Set the bottom_rowTracker to the first row with a leading 0
+        size_t bottom_rowTracker = static_cast<size_t>(reduced.getMatrix_Rows());
+        for (int k = 0; k < reduced.getMatrix_Rows(); k++) {
+            if (reduced.getMatrix_ptrMatrix()[bottom_rowTracker - 1][j] == 0)
+                bottom_rowTracker -= 1;
+            else break;
+        }
 
-        //#.
-    
+        //Swap rows with the leading 1's to the top and leading 0's to the bottom
+        for (size_t k = ROW_ABSOLUTE_TRACKER; k < zero_leadingElement.size(); k++) {
+            if (k == bottom_rowTracker - 1) { break; }
+            if (zero_leadingElement[k] && !zero_leadingElement[bottom_rowTracker - 1]) {
+                bottom_rowTracker--;
+                zero_leadingElement[k] = false;
+                zero_leadingElement[bottom_rowTracker] = true;
+                swapRows(reduced, k, bottom_rowTracker);
+
+            } else if (zero_leadingElement[k] && zero_leadingElement[bottom_rowTracker - 1]) {
+                bottom_rowTracker--;
+                if (k != 0) { k--; }
+            } 
+        }
+        make_leadingVariablesPositive(reduced);
+
+        //4. Now to use the sub_from_and_multiplyRow() function on the rows with leading 1's
+        //   Keep the top row constant, and subtract a constant multiple of the top row from the rest
+        for (size_t i = ROW_ABSOLUTE_TRACKER + 1; i < bottom_rowTracker; i++)
+            sub_from_and_multiplyRow(reduced, i, ROW_ABSOLUTE_TRACKER);
+
+        make_leadingVariablesPositive(reduced);
+
+        //5. Update the ROW_ABSOLUTE_TRACKER and COL_ABSOLUTE_TRACKER value (if needed,
+        //   if not then COL_ABSOLUTE_TRACKER is updated in the outer for-loop),
+        //   as well as the zero_leadingElement vector
+        if (isCanMatrixProgress(reduced, ROW_ABSOLUTE_TRACKER)) {
+            while (zero_leadingElement.size() != 0)
+                zero_leadingElement.pop_back();
+
+            //Now search the next column for a leading value (not zero)
+            //If a leading value is found (not zero), update the ABSOLUTE_TRACKERS...
+            //... and use the move_zeroRows() and make_leadingVariablesPositive() functions
+            //If a leading value is NOT found (all zeros in the column), restart the for-loop...
+            //... and update the COL_ABSOLUTE_TRACKER value only, and check if the matrix is deemed reduced
+            for (int i = ROW_ABSOLUTE_TRACKER + 1; i < reduced.getMatrix_Rows(); i++) {
+                if (reduced.getMatrix_ptrMatrix()[i][COL_ABSOLUTE_TRACKER + 1] != 0) {
+                    COL_ABSOLUTE_TRACKER++;
+                    ROW_ABSOLUTE_TRACKER++;
+                    move_zeroRows(reduced);
+                    make_leadingVariablesPositive(reduced);
+
+                    if (ROW_ABSOLUTE_TRACKER == reduced.getMatrix_Rows() - 1 || 
+                        COL_ABSOLUTE_TRACKER == reduced.getMatrix_Cols() - 1) {
+                        multiplyRow(reduced, ROW_ABSOLUTE_TRACKER, COL_ABSOLUTE_TRACKER);
+                        isReduced = true;
+
+                        if (isAugmented && isInfinitlyManySolutions(reduced))
+                            InfinitlyManySolutions_Message(*this);
+                        else if (isAugmented && isNoSolutionSet(reduced))
+                            NoSolutionSet_Message(*this);
+                        
+                        break;
+                    }
+                    break;
+                
+                } else if (reduced.getMatrix_ptrMatrix()[i][COL_ABSOLUTE_TRACKER + 1] == 0) {
+                    if (i == reduced.getMatrix_Rows() - 1) {
+                        i = ROW_ABSOLUTE_TRACKER + 1;   //Restart the for-loop
+                        COL_ABSOLUTE_TRACKER++;         //Move onto the next column
+
+                    } else if (COL_ABSOLUTE_TRACKER == reduced.getMatrix_Cols() - 1) {
+                        isReduced = true;
+
+                        if (isAugmented && isInfinitlyManySolutions(reduced))
+                            InfinitlyManySolutions_Message(*this);
+                        else if (isAugmented && isNoSolutionSet(reduced))
+                            NoSolutionSet_Message(*this);
+
+                        break;
+                    }
+                }
+            }
+        }
     }
+    return reduced;
 }
 
 //Matrix Matrix::Gauss_Jordan_Elimination() {}
@@ -234,6 +354,7 @@ float** Matrix::getMatrix_ptrMatrix() const { return this->matrix; }
 ostream& operator<<(ostream& insertion_op, const Matrix& rhs_matrix) {
     insertion_op << "======= " << rhs_matrix.matrix_name << " Matrix ======="; 
     insertion_op << endl << endl;
+    insertion_op << setprecision(3);
 
     for (int i = 0; i < rhs_matrix.rows; i++) {
         insertion_op << setw(6) << "[ ";
@@ -243,7 +364,7 @@ ostream& operator<<(ostream& insertion_op, const Matrix& rhs_matrix) {
                 insertion_op << rhs_matrix.matrix[i][j];
                 break;
             }
-            insertion_op << rhs_matrix.matrix[i][j] << setw(4);
+            insertion_op << rhs_matrix.matrix[i][j] << setw(7);
         }
         insertion_op << " ]" << endl;
     }
@@ -758,31 +879,249 @@ bool Matrix::isSquareMatrix() const {
 //Function is COMPLETE
 //Function to zero-out the entire matrix
 void Matrix::zero_outMatrix(Matrix& objMatrix) {
-    if (objMatrix.matrix == nullptr) { return; }
+    if (objMatrix.getMatrix_ptrMatrix() == nullptr) { return; }
 
-    for (int i = 0; i < objMatrix.rows; i++) {
-        for (int j = 0; j < objMatrix.cols; j++)
-            objMatrix.matrix[i][j] = 0;
+    for (int i = 0; i < objMatrix.getMatrix_Rows(); i++) {
+        for (int j = 0; j < objMatrix.getMatrix_Cols(); j++)
+            objMatrix.getMatrix_ptrMatrix()[i][j] = 0;
     }
 }
 
-//Function to return true if a row has a leading 1... 
-//... and all entries below it are all zeros
-/* bool Matrix::isCanMatrixProgress(const Matrix& reduced, const int& column_rowTracker) {
-    bool canMatrix_Progress = false;
+//Function is COMPLETE
+//Function to return true if the row at rowIndex is a zero-row
+bool Matrix::isZeroRow(const Matrix& reduced, const int& rowIndex) const {
+    for (int j = 0; j < reduced.getMatrix_Cols(); j++) {
+        if (reduced.getMatrix_ptrMatrix()[rowIndex][j] == 0) {
+            if (j == reduced.getMatrix_Cols() - 1) { return true; }
+        
+        } else { return false; }
+    }
+    return false;
+}
 
-    for (int j = 0; j < reduced.cols; j++) {
-        if (reduced.matrix[column_rowTracker][j] == 0) {
-            continue;
-        } else if (reduced.matrix[column_rowTracker][j] == 1) {
-            break;  //Leading 1 has been found
-        } else { 
-            return canMatrix_Progress; 
+//Function is COMPLETE
+//Function to swap two rows of a matrix
+void Matrix::swapRows(Matrix& reduced, const int& firstRow, const int& secondRow) {
+    float temporaryElement = 0;
+    for (int j = 0; j < reduced.getMatrix_Cols(); j++) {
+        temporaryElement = reduced.getMatrix_ptrMatrix()[firstRow][j];
+        reduced.getMatrix_ptrMatrix()[firstRow][j] = reduced.getMatrix_ptrMatrix()[secondRow][j];
+        reduced.getMatrix_ptrMatrix()[secondRow][j] = temporaryElement;
+    }
+}
+
+//Function is COMPLETE
+//Function to find a number to multiply an entire row with such that the...
+//... leading variable becomes a Leading One  
+void Matrix::multiplyRow(Matrix& reduced, const int& targetRow, const int& start_targetCol) {
+    float multiplicaNumber = 0;
+    try {
+        if (reduced.getMatrix_ptrMatrix()[targetRow][start_targetCol] == 0)
+            throw DivideByZero_exception();
+        
+        multiplicaNumber = 1 / reduced.getMatrix_ptrMatrix()[targetRow][start_targetCol];
+    
+    } catch (const DivideByZero_exception& ex) {
+        cerr << "Couldn't divide " + reduced.getMatrix_Name() 
+            << " Matrix row by zero." << endl;
+        Matrix::pauseProgram();
+        std::exit(EXIT_PROGRAM);
+    }
+
+    for (int j = start_targetCol; j < reduced.getMatrix_Cols(); j++)
+        reduced.getMatrix_ptrMatrix()[targetRow][j] *= multiplicaNumber;
+}
+
+//Function is COMPLETE
+//Function to make all leading variables in the reduced matrix positive
+//If a leading variable of a row is negative, then multiply that entire row by -1
+//FUNCTION TO BE USED AFTER EVERY ROW-OPERATION!!!
+void Matrix::make_leadingVariablesPositive(Matrix& reduced) {
+    for (int i = 0; i < reduced.getMatrix_Rows(); i++) {
+        if (isZeroRow(reduced, i)) { continue; }
+
+        if (reduced.getMatrix_ptrMatrix()[i][0] < 0) {
+            for (int j = 0; j < reduced.getMatrix_Cols(); j++)
+                reduced.getMatrix_ptrMatrix()[i][j] *= -1;
+        
+        } else if (reduced.getMatrix_ptrMatrix()[i][0] == 0) {
+            for (int j = 1; j < reduced.getMatrix_Cols(); j++) {
+
+                if (reduced.getMatrix_ptrMatrix()[i][j] == 0) { 
+                    //Continue searching the columns of the i-th row
+                    continue; 
+
+                } else if (reduced.getMatrix_ptrMatrix()[i][j] > 0) { 
+                    //Break out of this inner-loop and search the next row
+                    break; 
+
+                } else if (reduced.getMatrix_ptrMatrix()[i][j] < 0) {
+                    for (int k = j; k < reduced.getMatrix_Cols(); k++)
+                        reduced.getMatrix_ptrMatrix()[i][k] *= -1;
+
+                    //Break out of this inner-loop and search the next row
+                    break;
+                } 
+            }
         }
     }
+}
 
-    //If a leading 1 has been found
-    for (int i = column_rowTracker; i < reduced.rows; i++) {
+//Function is COMPLETE
+//Function to SUBTRACT^ a multiple of the constRow from the targetRow...
+//... and use those results to update the the targetRow
+//Function to make sure to use rows that have Leading Variables in the same column!!!
+//^The use of the make_leadingVariablesPositive() function allows...
+//... us to only require subtraction of a multiple of a constant row (Correct!)
+void Matrix::sub_from_and_multiplyRow(Matrix& reduced, const int& targetRow, const int& constRow) {
+    make_leadingVariablesPositive(reduced);
+    int COLUMN_TRACKER = 0;
+    try {
+        for (int j = 0; j < reduced.getMatrix_Cols(); j++) {
+            if (reduced.getMatrix_ptrMatrix()[targetRow][j] == 0 &&
+                reduced.getMatrix_ptrMatrix()[constRow][j] == 0) {
+                continue;
 
+            } else if (reduced.getMatrix_ptrMatrix()[targetRow][j] > 0
+                && reduced.getMatrix_ptrMatrix()[constRow][j] > 0) {
+                COLUMN_TRACKER = j;
+                break;
+
+            } else if ((reduced.getMatrix_ptrMatrix()[targetRow][j] == 0 && reduced.getMatrix_ptrMatrix()[constRow][j] > 0)
+                || (reduced.getMatrix_ptrMatrix()[targetRow][j] > 0 && reduced.getMatrix_ptrMatrix()[constRow][j] == 0)) 
+            {
+                throw InvalidRowOperation_exception();
+            }
+        }
+
+    } catch (const InvalidRowOperation_exception& ex) {
+        cerr << "Operation Matrix::sub_from_and_multiplyRow() is invalid as target-row and "
+            << "constant-row are incompatible (their leading variables are not in "
+            << "the same column for the operation to be performed)." << endl;
+        Matrix::pauseProgram();
+        std::exit(EXIT_PROGRAM);    //For testing reasons (TO-BE changed)
     }
-} */
+    
+    //Find a multiplication factor such that...
+    //... targetRow[leading variable] - (factor) * constRow[leading variable] = 0
+    //...where 0 is the new value of reduced.getMatrix_ptrMatrix()[targetRow][0]
+    float multiplicaFactor = reduced.getMatrix_ptrMatrix()[targetRow][COLUMN_TRACKER]
+                            / reduced.getMatrix_ptrMatrix()[constRow][COLUMN_TRACKER];
+    for (int j = COLUMN_TRACKER; j < reduced.getMatrix_Cols(); j++) {
+        reduced.getMatrix_ptrMatrix()[targetRow][j] -= multiplicaFactor * reduced.getMatrix_ptrMatrix()[constRow][j];
+    }
+}
+
+//Function is COMPLETE
+//Function to move all the zero-rows of the matrix to the bottom of the matrix
+//Function to use a vector of booleans to keep track of the locations of the zero rows
+//Indicies of the vector represent the row numbers of the matrix
+void Matrix::move_zeroRows(Matrix& reduced) {
+    try {
+        if (reduced.zeroRow_recordLog.size() != 0 && 
+            reduced.zeroRow_recordLog.size() != static_cast<size_t>(reduced.getMatrix_Rows())) 
+        {
+            throw NullVector_exception();
+        }
+
+        //Flush/Delete the record log so that it may be updated
+        while (reduced.zeroRow_recordLog.size() != 0)
+            reduced.zeroRow_recordLog.pop_back();
+            
+    } catch (const NullVector_exception& ex) {
+        cerr << "Inside move_zeroRows() function. "
+            << "Could not execute further because zeroRow_recordLog.size() != 0 AND "
+            << "zeroRow_recordLog.size() != reduced.getMatrix_Rows()" << endl;
+        Matrix::pauseProgram();
+        std::exit(EXIT_PROGRAM);
+    }
+
+    //When moving zero-rows, the zero-row record log will be updated
+    for (int i = 0; i < reduced.getMatrix_Rows(); i++) {
+        if (!isZeroRow(reduced, i))
+            reduced.zeroRow_recordLog.push_back(false);
+        else reduced.zeroRow_recordLog.push_back(true);
+    }  
+
+    //Use the vector record log to re-sort the matrix, sort the vector record log too
+    size_t zeroRow_Tracker = reduced.zeroRow_recordLog.size();
+    for (size_t k = 0; k < reduced.zeroRow_recordLog.size(); k++) {
+        if (reduced.zeroRow_recordLog[zeroRow_Tracker - 1])
+            zeroRow_Tracker -= 1;
+        else break;
+    }
+
+    for (size_t i = 0; i < reduced.zeroRow_recordLog.size(); i++) {
+        if (reduced.zeroRow_recordLog[i]) {
+            zeroRow_Tracker -= 1;
+            reduced.zeroRow_recordLog[i] = false;
+            reduced.zeroRow_recordLog[zeroRow_Tracker] = true;
+            swapRows(reduced, i, zeroRow_Tracker);
+        }
+    }
+}
+
+//Function is COMPLETE
+//Function to return true if a row has a leading 1 and all entries below that leading 1 are all zeros
+bool Matrix::isCanMatrixProgress(const Matrix& reduced, const int& row_absoluteTracker) const {
+    int zeroColumn_Tracker = 0;
+    for (int j = 0; j < reduced.getMatrix_Cols(); j++) {
+        if (reduced.getMatrix_ptrMatrix()[row_absoluteTracker][j] == 0) {
+            continue;
+
+        } else if (reduced.getMatrix_ptrMatrix()[row_absoluteTracker][j] == 1) {
+            zeroColumn_Tracker = j;
+            break;  //Leading 1 has been found
+
+        } else { return false; }
+    }
+
+    //If a leading 1 has been found, search if elements under that leading 1 are zeros
+    if (row_absoluteTracker == reduced.getMatrix_Rows() - 1) { return true; }
+
+    for (int i = row_absoluteTracker + 1; i < reduced.getMatrix_Rows(); i++) {
+        if (reduced.getMatrix_ptrMatrix()[i][zeroColumn_Tracker] == 0) {
+            if (i == reduced.getMatrix_Rows() - 1)
+                return true;
+            else continue;
+
+        } else { return false; }
+    }
+    return false;
+}
+
+//Function is COMPLETE
+//Function to determine and return true if there are more variables than independent equations...
+//... i.e, when the AUGMENTED matrix has more columns than rows  
+bool Matrix::isInfinitlyManySolutions(const Matrix& reduced) const {
+    return (reduced.getMatrix_Cols() - 1 > reduced.getMatrix_Rows());
+}
+
+//Function is COMPLETE
+//Function to determine and return true if the reduced AUGMENTED matrix has no solution
+bool Matrix::isNoSolutionSet(const Matrix& reduced) const {
+    for (int i = 0; i < reduced.getMatrix_Rows(); i++) {
+        if (isZeroRow(reduced, i)) { break; }
+
+        for (int j = 0; j < reduced.getMatrix_Cols() - 1; j++) {
+            if (reduced.getMatrix_ptrMatrix()[i][j] == 0 && j != reduced.getMatrix_Cols() - 2) {
+                continue;
+
+            } else if (reduced.getMatrix_ptrMatrix()[i][j] == 0 && j == reduced.getMatrix_Cols() - 2) {
+                if (reduced.getMatrix_ptrMatrix()[i][j] != reduced.getMatrix_ptrMatrix()[i][j + 1])
+                    return true; 
+
+            } else { break; }
+        }
+    }
+    return false;
+}
+
+void Matrix::InfinitlyManySolutions_Message(const Matrix& objMatrix) const {
+    cout << "The" + objMatrix.getMatrix_Name() + " Matrix above has Infinitly Many Solutions as there"
+        << " are more variables (columns) than independent equations (rows)." << endl << endl;
+}
+
+void Matrix::NoSolutionSet_Message(const Matrix& objMatrix) const {
+    cout << "The " + objMatrix.getMatrix_Name() + " Matrix above has No Solution Set." << endl << endl;
+}
